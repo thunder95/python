@@ -1,0 +1,294 @@
+{% extends './admin/base.html' %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/ztree/css/metroStyle/metroStyle.css" type="text/css">
+<style type="text/css">
+    .btn-blue {
+        background: 0 0!important;
+        border: 1px solid #b4cef8;
+        color: #b4cef8;
+    }
+    .btn-grey {
+        background: 0 0!important;
+        border: 1px solid #acb9ca;
+        color: #bbc7d4;
+    }
+    .btn:hover, .btn:focus, .btn:active{
+        background: 0 0!important;
+        border: 1px solid white;
+        color: white;
+    }
+    .portlet-title .caption span {
+        font-size: 14px;
+    }
+    .portlet-title .caption span i {
+        float: none;
+        color: white;
+        margin-right: 2px;
+        margin-left: 5px;
+    }
+
+</style>
+{% endblock %}
+
+{% block js %}
+<script type="text/javascript" src="/static/ztree/js/jquery.ztree.core.js"></script>
+<script type="text/javascript" src="/static/ztree/js/jquery.ztree.excheck.js"></script>
+<script type="text/javascript" src="/static/ztree/js/jquery.ztree.exedit.js"></script>
+{% endblock %}
+
+{% block main %}
+
+    <div class="container-fluid">
+
+        <!-- BEGIN PAGE HEADER-->
+
+        <div class="row-fluid">
+
+            <div class="span12">
+
+                <!-- BEGIN PAGE TITLE & BREADCRUMB-->
+
+                <h3 class="page-title">
+
+                    知识库管理员
+                    <small>权限管理</small>
+
+                </h3>
+
+                <ul class="breadcrumb">
+
+                    <li>
+                        <i class="icon-circle-arrow-left"></i>
+
+                        <a href="/admin/">返回首页</a>
+
+                    </li>
+
+                </ul>
+
+                <!-- END PAGE TITLE & BREADCRUMB-->
+
+            </div>
+
+        </div>
+
+        <!-- END PAGE HEADER-->
+        <div class="row-fluid">
+
+            <div class="span12">
+
+                <!-- BEGIN SAMPLE TABLE PORTLET-->
+
+                <div class="portlet box blue" >
+
+                    <div class="portlet-title">
+
+                        <div class="caption"><i class="icon-edit"></i>编辑权限</div>
+                        <div class="actions">
+                            <a href="javascript:;" class="btn btn-sm btn-blue" onclick="saveAccess()">
+                                <i class="icon-save"></i> 保存 </a>
+                        </div>
+
+                    </div>
+
+                    <div class="portlet-body" style="min-height: 500px">
+                        <ul id="treeMenu" class="ztree"></ul>
+                        {{useraccess.json}}
+                        {{useraccess.admin_id}}
+
+                    </div>
+
+                </div>
+
+                <!-- END SAMPLE TABLE PORTLET-->
+
+            </div>
+
+
+        </div>
+
+
+
+    </div>
+
+
+<script>
+
+    var setting = {
+        view: {
+            addDiyDom: addDiyDom,
+            selectedMulti: false,
+            dblClickExpand: false
+        },
+        check: {
+            enable: false
+        },
+        edit: {
+            enable: true,
+            editNameSelectAll: true,
+            showRemoveBtn: false,
+            showRenameBtn: false,
+            drag:{
+                inner: false
+            }
+        },
+        data: {
+            simpleData: {
+                enable: true
+            }
+        },
+        callback: {
+            onClick: onClick,
+            beforeExpand: beforeExpand,
+            onExpand: onExpand,
+        }
+    };
+
+    {% autoescape off %}
+    //var zNodes =   {{ menus.json }};
+    var zNodes = [];
+    {% endautoescape %}
+
+    //最后一个值保存上一个自增ID
+    zNodes.pop();
+
+    //全选 暂时不支持
+    function selectAll() {
+        var zTree = $.fn.zTree.getZTreeObj("treeMenu");
+        zTree.setting.edit.editNameSelectAll =  $("#selectAll").attr("checked");
+    }
+
+    ///////单击展开节点
+    function onClick(e,treeId, treeNode) {
+        var zTree = $.fn.zTree.getZTreeObj("treeMenu");
+        //zTree.expandNode(treeNode);
+        zTree.expandNode(treeNode, null, null, null, true);
+    }
+    var curExpandNode = null;
+    function beforeExpand(treeId, treeNode) {
+        var pNode = curExpandNode ? curExpandNode.getParentNode():null;
+        var treeNodeP = treeNode.parentTId ? treeNode.getParentNode():null;
+        var zTree = $.fn.zTree.getZTreeObj("treeMenu");
+        for(var i=0, l=!treeNodeP ? 0:treeNodeP.children.length; i<l; i++ ) {
+            if (treeNode !== treeNodeP.children[i]) {
+                zTree.expandNode(treeNodeP.children[i], false);
+            }
+        }
+        while (pNode) {
+            if (pNode === treeNode) {
+                break;
+            }
+            pNode = pNode.getParentNode();
+        }
+        if (!pNode) {
+            singlePath(treeNode);
+        }
+
+    }
+    function singlePath(newNode) {
+        if (newNode === curExpandNode) return;
+
+        var zTree = $.fn.zTree.getZTreeObj("treeMenu"),
+            rootNodes, tmpRoot, tmpTId, i, j, n;
+
+        if (!curExpandNode) {
+            tmpRoot = newNode;
+            while (tmpRoot) {
+                tmpTId = tmpRoot.tId;
+                tmpRoot = tmpRoot.getParentNode();
+            }
+            rootNodes = zTree.getNodes();
+            for (i=0, j=rootNodes.length; i<j; i++) {
+                n = rootNodes[i];
+                if (n.tId != tmpTId) {
+                    zTree.expandNode(n, false);
+                }
+            }
+        } else if (curExpandNode && curExpandNode.open) {
+            if (newNode.parentTId === curExpandNode.parentTId) {
+                zTree.expandNode(curExpandNode, false);
+            } else {
+                var newParents = [];
+                while (newNode) {
+                    newNode = newNode.getParentNode();
+                    if (newNode === curExpandNode) {
+                        newParents = null;
+                        break;
+                    } else if (newNode) {
+                        newParents.push(newNode);
+                    }
+                }
+                if (newParents!=null) {
+                    var oldNode = curExpandNode;
+                    var oldParents = [];
+                    while (oldNode) {
+                        oldNode = oldNode.getParentNode();
+                        if (oldNode) {
+                            oldParents.push(oldNode);
+                        }
+                    }
+                    if (newParents.length>0) {
+                        zTree.expandNode(oldParents[Math.abs(oldParents.length-newParents.length)-1], false);
+                    } else {
+                        zTree.expandNode(oldParents[oldParents.length-1], false);
+                    }
+                }
+            }
+        }
+        curExpandNode = newNode;
+    }
+
+    function onExpand(event, treeId, treeNode) {
+        curExpandNode = treeNode;
+    }
+
+    $(document).ready(function(){
+        $.fn.zTree.init($("#treeMenu"), setting, zNodes);
+    });
+
+    //保存目录
+    function saveMenu() {
+        var ztree = $.fn.zTree.getZTreeObj("treeMenu");
+        json_str = '[';
+        json_str += createJson(ztree.getNodes(),0);
+        json_str += '{lastId: '+lastId+'}';
+        json_str += ']';
+
+        $.ajax({
+            cache: false,
+            type: "POST",
+            url:"/admin/menu/update",
+            data:{'pk': {{menus.id}}, 'menu':json_str},
+        async: true,
+            beforeSend:function(xhr, settings){
+            xhr.setRequestHeader("X-CSRFToken", "{{ csrf_token }}");
+        },
+        success: function(data) {
+            //console.log(data);
+            //alert('ok');
+        },
+    });
+    }
+
+    //生成json树
+    function createJson(obj, pid) {
+        var str = '';
+        var checked;
+        for (var k = 0, length = obj.length; k < length; k++) {
+            checked = obj[k].checked ? 1 : 0;
+            if (obj[k].checked) {
+                str += '{ id:'+obj[k].id+', pId:'+pid+', name:"'+obj[k].name+'", checked:1},';
+            } else {
+                str += '{ id:'+obj[k].id+', pId:'+pid+', name:"'+obj[k].name+'"},';
+            }
+            if (typeof(obj[k].children)!="undefined" && obj[k].children.length>0) {
+                str += createJson(obj[k].children, obj[k].id);
+            }
+        }
+        return str;
+    }
+
+</script>
+
+{% endblock %}

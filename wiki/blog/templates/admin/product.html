@@ -1,0 +1,451 @@
+{% extends './admin/base.html' %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/ztree/css/zTreeStyle/zTreeStyle.css" type="text/css">
+<style type="text/css">
+    .btn-blue {
+        background: 0 0!important;
+        border: 1px solid #b4cef8;
+        color: #b4cef8;
+    }
+    .btn-grey {
+        background: 0 0!important;
+        border: 1px solid #acb9ca;
+        color: #bbc7d4;
+    }
+    .btn:hover, .btn:focus, .btn:active{
+        background: 0 0!important;
+        border: 1px solid white;
+        color: white;
+    }
+    .portlet-title .caption span {
+        font-size: 14px;
+    }
+    .portlet-title .caption span i {
+        float: none;
+        color: white;
+        margin-right: 2px;
+        margin-left: 5px;
+    }
+    .ztree li span.button.add {margin-left:2px; margin-right: -1px; background-position:-144px 0; vertical-align:top; *vertical-align:middle}
+    .ztree li button.switch {visibility:hidden; width:1px;}
+    .ztree li button.switch.roots_docu {visibility:visible; width:16px;}
+    .ztree li button.switch.center_docu {visibility:visible; width:16px;}
+    .ztree li button.switch.bottom_docu {visibility:visible; width:16px;}
+</style>
+{% endblock %}
+
+{% block js %}
+<script type="text/javascript" src="/static/ztree/js/jquery.ztree.core.js"></script>
+<script type="text/javascript" src="/static/ztree/js/jquery.ztree.excheck.js"></script>
+<script type="text/javascript" src="/static/ztree/js/jquery.ztree.exedit.js"></script>
+{% endblock %}
+
+{% block main %}
+
+    <div class="container-fluid">
+
+        <!-- BEGIN PAGE HEADER-->
+
+        <div class="row-fluid">
+
+            <div class="span12">
+
+                <!-- BEGIN PAGE TITLE & BREADCRUMB-->
+
+                <h3 class="page-title">
+
+                    产品管理
+                    <small>节点管理</small>
+
+                </h3>
+
+                <ul class="breadcrumb">
+
+                    <li>
+                        <i class="icon-circle-arrow-left"></i>
+
+                        <a href="/admin/">返回首页</a>
+
+                    </li>
+
+                </ul>
+
+                <!-- END PAGE TITLE & BREADCRUMB-->
+
+            </div>
+
+        </div>
+
+        <!-- END PAGE HEADER-->
+        <div class="row-fluid">
+
+            <div class="span12">
+
+                <!-- BEGIN SAMPLE TABLE PORTLET-->
+
+                <div class="portlet box blue" >
+
+                    <div class="portlet-title">
+
+                        <div class="caption"><i class="icon-edit"></i>编辑目录</div>
+                        <!--
+                        <div class="actions">
+                            <a href="javascript:;" class="btn btn-sm btn-grey" onclick="saveMenu()">
+                            <i class="icon-save"></i> 保存 </a>
+                        </div>-->
+
+                    </div>
+
+                    <div class="portlet-body" style="min-height: 500px">
+                        <ul id="treeMenu" class="ztree"></ul>
+                    </div>
+
+                </div>
+
+                <!-- END SAMPLE TABLE PORTLET-->
+
+            </div>
+
+
+        </div>
+
+
+
+    </div>
+
+    <script>
+
+
+
+        var setting = {
+            view: {
+                addHoverDom: addHoverDom,
+                removeHoverDom: removeHoverDom,
+                selectedMulti: false,
+                dblClickExpand: false
+            },
+            check: {
+                enable: true
+            },
+            edit: {
+                enable: true,
+                editNameSelectAll: true,
+                drag:{
+                    inner: false
+                }
+            },
+            data: {
+                simpleData: {
+                    enable: true
+                }
+            },
+            callback: {
+                beforeDrag: beforeDrag,
+                beforeDrop: beforeDrop,
+                beforeEditName: beforeEditName,
+                beforeRemove: beforeRemove,
+                beforeRename: beforeRename,
+                onRemove: onRemove,
+                onRename: onRename,
+                onClick: onClick,
+                beforeExpand: beforeExpand,
+                onExpand: onExpand,
+                onNodeCreated: onNodeCreated,
+                onDrop: onDrop,
+                onCheck: onCheck,
+            }
+        };
+
+        var ini_num=0;
+        var json_str = '';
+        {% autoescape off %}
+        var zNodes =   {{ menus.json }};
+        {% endautoescape %}
+
+        //最后一个值保存上一个自增ID
+        var lastId = zNodes.pop().lastId
+
+        //设置checkbox
+        var code;
+        function setCheck() {
+            var zTree = $.fn.zTree.getZTreeObj("treeMenu"),
+                py = $("#py").attr("checked")? "p":"",
+                sy = $("#sy").attr("checked")? "s":"",
+                pn = $("#pn").attr("checked")? "p":"",
+                sn = $("#sn").attr("checked")? "s":"",
+                type = { "Y":py + sy, "N":pn + sn};
+            zTree.setting.check.chkboxType = type;
+            showCode('setting.check.chkboxType = { "Y" : "' + type.Y + '", "N" : "' + type.N + '" };');
+        }
+        function showCode(str) {
+            if (!code) code = $("#code");
+            code.empty();
+            code.append("<li>"+str+"</li>");
+        }
+
+        ///////拖放时禁止到文档下级
+        function beforeDrag(treeId, treeNodes) {
+            for (var i=0,l=treeNodes.length; i<l; i++) {
+                if (treeNodes[i].drag === false) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        function beforeDrop(treeId, treeNodes, targetNode, moveType) {
+            return targetNode ? targetNode.drop !== false : true;
+        }
+
+
+        var className = "dark";
+        function beforeEditName(treeId, treeNode) {
+            className = (className === "dark" ? "":"dark");
+            var zTree = $.fn.zTree.getZTreeObj("treeMenu");
+            zTree.selectNode(treeNode);
+            zTree.editName(treeNode);
+        }
+
+        //提示并关闭内容窗口
+        function beforeRemove(treeId, treeNode) {
+            className = (className === "dark" ? "":"dark");
+            var zTree = $.fn.zTree.getZTreeObj("treeMenu");
+            zTree.selectNode(treeNode);
+
+            if (treeNode.id == 1) {
+                swal({
+                    title: "出错了",
+                    text: "不能删除根目录",
+                    type: "error",
+                    confirmButtonText: "关闭"
+                });
+                return false;
+            }
+
+            return true;
+        }
+
+        //删除后实时保存
+        function onRemove(e, treeId, treeNode) {
+            saveMenu();
+        }
+        //改名前的判断
+        function beforeRename(treeId, treeNode, newName, isCancel) {
+            className = (className === "dark" ? "":"dark");
+            if (treeNode.id == 1 && newName != '根目录') {
+                setTimeout(function() {
+                    $.fn.zTree.getZTreeObj("treeMenu").cancelEditName();
+                    swal({
+                        title: "出错了",
+                        text: "不允许修改根目录",
+                        type: "error",
+                        confirmButtonText: "关闭"
+                    });
+                }, 0)
+                return false;
+            } else if (newName.length == 0) {
+                setTimeout(function() {
+                    $.fn.zTree.getZTreeObj("treeMenu").cancelEditName();
+                    swal({
+                        title: "出错了",
+                        text: "节点名称不能为空",
+                        type: "error",
+                        confirmButtonText: "关闭"
+                    });
+                }, 0)
+                return false;
+            } else {
+                return true;
+
+            }
+
+        }
+        //改名后实时保存
+        function onRename(e,treeId, treeNode) {
+            saveMenu();
+        }
+        //新增有新名字后实时保存
+        function onNodeCreated(e,treeId, treeNode) {
+            if (ini_num<zNodes.length) {
+                ini_num++;
+                return;
+            }
+            saveMenu();
+        }
+        //拖动前的pid和实时保存
+        function onDrop(event, treeId, treeNode, targetNode, moveType, isCopy) {
+            saveMenu();
+        }
+
+        function showRemoveBtn(treeId, treeNode) {
+            return !treeNode.isFirstNode;
+        }
+        function showRenameBtn(treeId, treeNode) {
+            return !treeNode.isLastNode;
+        }
+
+        function addHoverDom(treeId, treeNode) {
+            var sObj = $("#" + treeNode.tId + "_span");
+            if (treeNode.editNameFlag || $("#addBtn_"+treeNode.tId).length>0) return;
+            var addStr = "<span class='button add' id='addBtn_" + treeNode.tId
+                + "' title='add node' onfocus='this.blur();'></span>";
+            sObj.after(addStr);
+            var btn = $("#addBtn_"+treeNode.tId);
+            if (btn) btn.bind("click", function(){
+                var zTree = $.fn.zTree.getZTreeObj("treeMenu");
+                zTree.addNodes(treeNode, {id:(lastId), pId:treeNode.id, name:"新标题" + (lastId++)});
+                return false;
+            });
+        };
+        function removeHoverDom(treeId, treeNode) {
+            $("#addBtn_"+treeNode.tId).unbind().remove();
+        };
+
+        //全选 暂时不支持
+        function selectAll() {
+            var zTree = $.fn.zTree.getZTreeObj("treeMenu");
+            zTree.setting.edit.editNameSelectAll =  $("#selectAll").attr("checked");
+        }
+        ///////单击展开节点
+        function onClick(e,treeId, treeNode) {
+            var zTree = $.fn.zTree.getZTreeObj("treeMenu");
+            //zTree.expandNode(treeNode);
+            zTree.expandNode(treeNode, null, null, null, true);
+        }
+        //选中,后台实时保存
+        function onCheck() {
+            saveMenu();
+        }
+
+        var curExpandNode = null;
+        function beforeExpand(treeId, treeNode) {
+            var pNode = curExpandNode ? curExpandNode.getParentNode():null;
+            var treeNodeP = treeNode.parentTId ? treeNode.getParentNode():null;
+            var zTree = $.fn.zTree.getZTreeObj("treeMenu");
+            for(var i=0, l=!treeNodeP ? 0:treeNodeP.children.length; i<l; i++ ) {
+                if (treeNode !== treeNodeP.children[i]) {
+                    zTree.expandNode(treeNodeP.children[i], false);
+                }
+            }
+            while (pNode) {
+                if (pNode === treeNode) {
+                    break;
+                }
+                pNode = pNode.getParentNode();
+            }
+            if (!pNode) {
+                singlePath(treeNode);
+            }
+
+        }
+        function singlePath(newNode) {
+            if (newNode === curExpandNode) return;
+
+            var zTree = $.fn.zTree.getZTreeObj("treeMenu"),
+                rootNodes, tmpRoot, tmpTId, i, j, n;
+
+            if (!curExpandNode) {
+                tmpRoot = newNode;
+                while (tmpRoot) {
+                    tmpTId = tmpRoot.tId;
+                    tmpRoot = tmpRoot.getParentNode();
+                }
+                rootNodes = zTree.getNodes();
+                for (i=0, j=rootNodes.length; i<j; i++) {
+                    n = rootNodes[i];
+                    if (n.tId != tmpTId) {
+                        zTree.expandNode(n, false);
+                    }
+                }
+            } else if (curExpandNode && curExpandNode.open) {
+                if (newNode.parentTId === curExpandNode.parentTId) {
+                    zTree.expandNode(curExpandNode, false);
+                } else {
+                    var newParents = [];
+                    while (newNode) {
+                        newNode = newNode.getParentNode();
+                        if (newNode === curExpandNode) {
+                            newParents = null;
+                            break;
+                        } else if (newNode) {
+                            newParents.push(newNode);
+                        }
+                    }
+                    if (newParents!=null) {
+                        var oldNode = curExpandNode;
+                        var oldParents = [];
+                        while (oldNode) {
+                            oldNode = oldNode.getParentNode();
+                            if (oldNode) {
+                                oldParents.push(oldNode);
+                            }
+                        }
+                        if (newParents.length>0) {
+                            zTree.expandNode(oldParents[Math.abs(oldParents.length-newParents.length)-1], false);
+                        } else {
+                            zTree.expandNode(oldParents[oldParents.length-1], false);
+                        }
+                    }
+                }
+            }
+            curExpandNode = newNode;
+        }
+
+        function onExpand(event, treeId, treeNode) {
+            curExpandNode = treeNode;
+        }
+
+        $(document).ready(function(){
+            $.fn.zTree.init($("#treeMenu"), setting, zNodes);
+            setCheck();
+            $("#py").bind("change", setCheck);
+            $("#sy").bind("change", setCheck);
+            $("#pn").bind("change", setCheck);
+            $("#sn").bind("change", setCheck);
+        });
+
+        //保存目录
+        function saveMenu() {
+            var ztree = $.fn.zTree.getZTreeObj("treeMenu");
+            json_str = '[';
+            json_str += createJson(ztree.getNodes(),0);
+            json_str += '{lastId: '+lastId+'}';
+            json_str += ']';
+
+            $.ajax({
+                cache: false,
+                type: "POST",
+                url:"/admin/menu/update",
+                data:{'pk': {{menus.id}}, 'menu':json_str},
+            async: true,
+                beforeSend:function(xhr, settings){
+                xhr.setRequestHeader("X-CSRFToken", "{{ csrf_token }}");
+            },
+            success: function(data) {
+                //console.log(data);
+                //alert('ok');
+            },
+        });
+        }
+
+        //生成json树
+        function createJson(obj, pid) {
+            var str = '';
+            var checked;
+            for (var k = 0, length = obj.length; k < length; k++) {
+                checked = obj[k].checked ? 1 : 0;
+                if (obj[k].checked) {
+                    str += '{ id:'+obj[k].id+', pId:'+pid+', name:"'+obj[k].name+'", checked:1},';
+                } else {
+                    str += '{ id:'+obj[k].id+', pId:'+pid+', name:"'+obj[k].name+'"},';
+                }
+                if (typeof(obj[k].children)!="undefined" && obj[k].children.length>0) {
+                    str += createJson(obj[k].children, obj[k].id);
+                }
+            }
+            return str;
+        }
+
+    </script>
+
+{% endblock %}
