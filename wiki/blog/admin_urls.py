@@ -7,7 +7,10 @@ from blog.admin_views import PostView, DeletePost, NewPost, UpdatePostIndexView,
     tinymce_image_upload_handler, UserSetView, NewUserView, AddUser, avatar_image_upload_handler, \
     ProductView, DeleteProduct, RestoreProduct, NewProduct, AddProduct, ProductUpdate, UpdateProduct, \
     DocutypeView, DeleteDocutype, NewDocutype, AddDocutype, DocutypeUpdate, UpdateDocutype, \
-    ProductMenu, update_product_menu, update_product_content,retrieve_product_content, DeleteUser, UserUpdate, UpdateUser
+    ProductMenu, update_product_menu, update_product_content,retrieve_product_content, DeleteUser, \
+    UserUpdate, UpdateUser, Retrieve_wechat, Wait_scan, Retrieve_wxfriends,Retrieve_dbfriends, \
+    Send_msg, Wx_sync, api_test, YouziView, youzi_upload, delete_growth, save_growth, media_list, \
+    save_config, events_list, save_events, delete_events, save_album, select_album, docu_lock
 
 urlpatterns = [
     url(r'^admin/', include([
@@ -24,6 +27,7 @@ urlpatterns = [
         url(r'^update/(?P<pk>[0-9]+)$', ProductUpdate.as_view()),
         url(r'^update/id/(?P<pk>[0-9]+)$', UpdateProduct.as_view()),
         url(r'^menu/(?P<pk>[0-9]+)$', ProductMenu.as_view()),
+        url(r'^docu/lock$', docu_lock),
 
         #文档类型
         url(r'^docutype$', DocutypeView.as_view()),
@@ -46,8 +50,30 @@ urlpatterns = [
         url(r'^menu/update/content$', update_product_content),
         #获取内容
         url(r'^menu/retrieve/content$', retrieve_product_content),
+        #测试接口
+        url(r'^menu/api/test$', api_test),
 
+        #微信相关
+        url(r'^menu/retrieve/wechat$', Retrieve_wechat),
+        url(r'^menu/waitScan$', Wait_scan),
+        url(r'^menu/wxfriends$', Retrieve_wxfriends),
+        url(r'^menu/dbfriends$', Retrieve_dbfriends),
+        url(r'^menu/send/msg$', Send_msg),
+        url(r'^wx_sync$', Wx_sync), #启动微信心跳
 
+        #柚子
+        url(r'^youzi$', YouziView.as_view()),
+        url(r'^youzi/upload$', youzi_upload),
+        url(r'^youzi/growth/save$', save_growth),
+        url(r'^youzi/growth/delete$', delete_growth),
+        url(r'^youzi/media$', media_list),
+        url(r'^youzi/config/save$', save_config),
+        url(r'^youzi/events$', events_list),
+        url(r'^youzi/events/save$', save_events),
+        url(r'^youzi/events/delete$', delete_events),
+        url(r'^youzi/album/save$', save_album),
+        url(r'^youzi/album/select$', select_album),
+        
         url(r'^update/draft/(?P<pk>[0-9]+)$', UpdateDraft.as_view()),
         url(r'^update/post/(?P<pk>[0-9]+)$', UpdatePost.as_view()),
         url(r'^update/(?P<pk>[0-9]+)$', UpdatePostIndexView.as_view()),

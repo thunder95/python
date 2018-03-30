@@ -3,7 +3,7 @@
 <html lang="zh">
 <head>
     <meta charset="utf-8"/>
-    <title>知识平台管理中心</title>
+    <title>柚子窝管理中心</title>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 
     <!-- BEGIN GLOBAL MANDATORY STYLES -->
@@ -51,6 +51,29 @@
 
         });
 
+
+        function heartBeat() {
+            $.ajax({
+                url:'/admin/wx_sync',
+                type:'GET', //GET
+                async:true,    //或false,是否异步
+                timeout:500,    //超时时间
+                dataType:'json',    //返回的数据格式：json/xml/html/script/jsonp/text
+                success:function(data,textStatus,jqXHR){
+                    if (data.success != '1') {
+                        console.log('stop');
+                        clearInterval(timer);
+                    }
+                },
+                error:function(xhr,textStatus){
+                    clearInterval(timer);
+                }
+            })
+        }
+
+        //初始化就搞起, 三十秒一次
+        var timer =  setInterval(heartBeat,30000);
+
     </script>
 
     {% block js %}{% endblock %}
@@ -73,7 +96,7 @@
 
             <a class="brand" href="/" style="padding-left: 20px">
 
-                知识平台管理中心
+                柚子窝管理中心
 
             </a>
 
@@ -144,7 +167,7 @@
 
     <!-- BEGIN SIDEBAR -->
 
-    <div class="page-sidebar nav-collapse collapse">
+    <div class="page-sidebar nav-collapse">
 
         <!-- BEGIN SIDEBAR MENU -->
 
@@ -166,6 +189,7 @@
             {#% nav /admin/repository "模板管理" "icon-file-text-alt" %#}
             {% ifequal user.is_superuser 1 %}
                 {% nav /admin/docutype "文档类型" "icon-th-list" %}
+                {% nav /admin/youzi "柚子空间" "icon-star" %}
                 {% nav /admin/user "用户管理" "icon-user-md" %}
             {% endifequal %}
         </ul>
@@ -194,7 +218,7 @@
 
     <div class="footer-inner">
 
-        2018 &copy; 轻松老板知识库系统
+        2018 &copy; 柚子窝
 
     </div>
 

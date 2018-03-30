@@ -4,6 +4,7 @@
 <link rel="stylesheet" href="/static/ztree/css/metroStyle/metroStyle.css" type="text/css">
 <link rel="stylesheet" type="text/css" href="/ueditor/UE/third-party/SyntaxHighlighter/shCoreDefault.css">
 <link href="/static/editor.md/css/editormd.css" rel="stylesheet" type="text/css"/>
+<link href="/static/css/selectivity-jquery.css" rel="stylesheet" type="text/css"/>
 <style type="text/css">
     .btn-blue {
         background: 0 0!important;
@@ -47,6 +48,26 @@
     .editormd-dialog-footer {
         margin-top: -15px;
     }
+    .form-horizontal .control-label {
+        width: 50px;
+    }
+    .form-horizontal .controls {
+        margin-left: 70px;
+    }
+    .selectivity-multiple-input {
+        width: 100% !important;
+        border: none !important;
+        box-shadow:none !important;
+    }
+    .selectivity-multiple-input-container {
+        background-color: #eef1f6;
+    }
+    #pic-qr {
+        width: 350px;
+        height: 350px;
+        margin: 0 auto;
+        display: block;
+    }
 </style>
 {% endblock %}
 
@@ -59,19 +80,23 @@
 <script type="text/javascript" src="/ueditor/UE/ueditor.all.min.js"></script>
 <script type="text/javascript" src="/ueditor/UE/lang/zh-cn/zh-cn.js"></script>
 <script src="/static/editor.md/editormd.min.js" type="text/javascript"></script>
+<script src="/static/js/selectivity-jquery.js"></script>
 <script id="editorId" src="" type="text/javascript"></script>
 <script type="text/javascript">
  //*********************编辑器相关*****************//
     var text_type = {{ content_type }};
 
     //编辑器内容
-    var editorText = {% if content_type %}''{% else %}'{% spaceless %}{% autoescape off %}{{ content }}{% endautoescape %}{% endspaceless %}'{% endif %};
-    var markdownText = {% if content_type %}'{% spaceless %}{% autoescape off %}{{ content }}{% endautoescape %}{% endspaceless %}'{% else %} ''{% endif %};
+    //var editorText = {% if content_type %}''{% else %}'{% spaceless %}{% autoescape off %}{{ content }}{% endautoescape %}{% endspaceless %}'{% endif %};
+    //var markdownText = {% if content_type %}'{% spaceless %}{% autoescape off %}{{ content }}{% endautoescape %}{% endspaceless %}'{% else %} ''{% endif %};
+    var editorText = ''
+    var markdownText = ''
     
     var markDownEditor = null;
     var Ueditor = null;
 
     function initEditor() {
+
         if (text_type == 1) {
             //初始化markdown编辑器
             if (markDownEditor) {
@@ -177,17 +202,19 @@
                             <a href="javascript:;" class="btn btn-sm btn-grey" onclick="saveMenu()">
                             <i class="icon-save"></i> 保存 </a>
                         </div>-->
+                        {% if content_type %}
+                        <div class="actions">
+                            <a href="javascript:;" class="btn btn-sm btn-grey" onclick="apiTest()">
+                            <i class="icon-bell"></i> 测试 </a>
+                        </div>
+                        {% endif %}
 
                     </div>
 
                     <div class="portlet-body">
-                        
                         <ul id="treeMenu" class="ztree"></ul>
 
                     </div>
-                
-
-
                 </div>
 
                 <!-- END SAMPLE TABLE PORTLET-->
@@ -205,13 +232,12 @@
                         <div class="caption"><i class="icon-edit"></i>编辑内容<span id="menu_path"><i class="icon-double-angle-right"></i>根目录</span></div>
 
                         <div class="actions">
+                            <a href="javascript:;" class="btn btn-sm btn-blue" onclick="shareWechat()">
+                            <i class="icon-share"></i> 分享 </a>
+                            <a href="javascript:;" class="btn btn-sm btn-blue" onclick="saveContent()">
+                            <i class="icon-save"></i> 保存 </a>
                             <a href="javascript:;" class="btn btn-sm btn-blue" onclick="switchEditor()" id="editor_btn">
                             <i class="icon-refresh"></i> <span id="editor_label">{% if content_type %} MarkDown {% else %} Editor {% endif %} </span></a>
-
-                             <a href="javascript:;" class="btn btn-sm btn-blue" onclick="saveContent()">
-                            <i class="icon-save"></i> 保存 </a>
-
-
                         </div>
 
                     </div>
@@ -242,14 +268,86 @@
 
         </div>
 
+        <!-- wechat modal-->
+        <div id="share" class="modal fade bs-modal-lg" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+            
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header" id="modal-title">
+                        <h4><h4>分享至微信好友    <span onclick="loginWechat()" class="label label-sm label-warning">切换用户</span></h4></h4>
+                    </div>
+                    <div class="modal-body">
+                        <img id="pic-qr" src='' />
+                        <form id="friends-list" class="form-horizontal">
+                           
+                            <div class="control-group">
+                                <label class="control-label">好友</label>
+                                <div class="controls">
+                                    <div id="friends" class="selectivity-input" style="width: 100%"></div>
+                                </div>
+                            </div>
+
+                            <div class="control-group">
+                                <label class="control-label">群组</label>
+                                <div class="controls">
+                                    <div id="groups" class="selectivity-input" style="width: 100%"></div>
+                                </div>
+                            </div>
+
+                            <div class="control-group">
+                                <label class="control-label">类型</label>
+                                <div class="controls">
+                                    <label class="radio">
+                                        <div class="radio">
+                                            <span><input type="radio" name="msg_type" value="1"></span>
+                                        </div>
+                                        链接
+                                    </label>
+                                    <label class="radio">
+                                        <div class="radio">
+                                            <span><input type="radio" name="msg_type" value="2"></span>
+                                        </div>
+                                        文本
+                                    </label>
+                                    <label class="radio">
+                                        <div class="radio">
+                                            <span><input type="radio" name="msg_type" value="3"></span>
+                                        </div>
+                                        PDF
+                                    </label>
+                                    <label class="radio">
+                                        <div class="radio">
+                                            <span><input type="radio" name="msg_type" value="4"></span>
+                                        </div>
+                                        好友分析
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="control-group">
+                                <label class="control-label">所有人</label>
+                                <label class="controls">
+                                    <label class="radio">
+                                    <input type="checkbox" id="send_to_all" value="1" name="send_to_all" disabled="disabled">
+                                    </label>（暂未开放此功能）
+                                </label>
+                            </div>
+                        </form>
+                    </div>
+                <div class="modal-footer">
+                    <button type="button" data-dismiss="modal" class="btn">关闭</button>
+                    <button type="button" id="sendMsg" class="btn blue" onclick="send()">发送</button>
+                </div>
+            </div>
+        </div>
+                        
+
+
 
 
     </div>
 
     <script type="text/javascript">
-        //编辑器
-        initEditor();
-
+       
         //初始化默认目录id
         var menu_id = 1;
 
@@ -445,6 +543,11 @@
             //初始化目录结构
             var ztree = $.fn.zTree.init($("#treeMenu"), setting, zNodes);
             ztree.expandAll(false);
+
+            //解决BUG:初始化隐藏modal
+            $('#share').hide();
+            getContent(1);
+            switchEditor();
         });
 
         //保存目录
@@ -625,7 +728,6 @@
         //ajax获取文档内容
         function getContent(id) {
             menu_id = id;
-    
             $.ajax({
                 cache: false,
                 type: "POST",
@@ -673,6 +775,242 @@
                 },
             });
         }
+
+        var waitScan = null;
+
+        //从数据库中拉取好友信息
+        function shareWechat() {
+             //立即抓取好友列表
+            $.get('dbfriends', function(data){ 
+                if(data.success == "1") {
+                     //渲染到select
+                    $('#share').modal('show');
+                    renderFriends(data.data);
+                } else {
+                    loginWechat();
+                }
+               
+            }, 'json');  
+
+            //ajax->db获取
+            /*
+            var flag = false;
+            if (flag) {
+                renderFriends([]);
+            } else {
+                loginWechat();
+
+            }*/
+        }
+
+        //登录微信弹出层
+        function loginWechat()  {
+            
+            $.ajax({
+                cache: false,
+                type: "POST",
+                url:"retrieve/wechat",
+                data:{'pk': {{product.id}}},
+                dataType:"json",
+                async: true,
+                beforeSend:function(xhr, settings){
+                    xhr.setRequestHeader("X-CSRFToken", "{{ csrf_token }}");
+                },
+                success: function(data) {
+                    //显示二维码
+                    $('#share').modal('show');
+                    $('#pic-qr').show().attr("src", data.data);
+                    $('.modal-footer').hide();
+                    $('#modal-title').html('<h4>请用手机扫码登录    <span onclick="loginWechat()" class="label label-sm label-warning">切换二维码</span></h4>');
+                    $('#friends-list').hide();
+            
+                    //发起等待扫描的请求
+                    $.get('waitScan', function(resp){  
+                        if (resp.success == '1') {
+                            //关闭interval
+                            clearInterval(timer);
+                            //开始拉取好友
+                            $('#modal-title').html('<h4>正在拉取好友信息...</h4>');
+                            $('#pic-qr').show().attr("src", '/static/loading.gif');
+
+                            //立即抓取好友列表
+                            $.get('wxfriends', function(data){  
+                                //渲染到select
+                                renderFriends(data.data);
+
+                                //启动心跳
+                                timer =  setInterval(heartBeat,30000);
+
+                            }, 'json');  
+
+
+                            //发送消息
+                            /*
+                            $.get('send/msg', function(data){  
+                                console.log(data)
+                            }, 'json'); */
+
+
+
+                        }
+                        
+                    }, 'json');  
+                },
+            });
+
+            
+        }
+
+        //渲染好友信息
+        function renderFriends(data){
+            $('#friends').selectivity({
+                items: data.friends,
+                multiple: true,
+                placeholder: '  请选择好友  '
+            });
+            $('#groups').selectivity({
+                items: data.groups,
+                multiple: true,
+                placeholder: '  请选择群组  '
+            });
+            $('.modal-footer').show();
+            $('#modal-title').html('<h4>分享至微信好友    <span onclick="loginWechat()" class="label label-sm label-warning">切换用户</span></h4>');
+            $('#friends-list').show();
+            $('#pic-qr').hide();
+
+        }
+
+        //测试发送消息
+        function send()  {
+
+            var opt =$("input[name='msg_type']:checked").val(); //暂为文本
+            var to_user = $('#friends').selectivity('value'); //好友
+            to_user = to_user.concat($('#groups').selectivity('value')); //合并群组
+
+            var msg =  ''
+
+            if (opt == '1' || opt == '3') {
+                msg = 'http://localhost:8099/document/{{product.id}}?subMenu='+menu_id;
+               
+            } else if (opt == '2') {
+                if (text_type) {
+                    msg = $('#markdownID').val();
+                } else {
+                    msg = Ueditor.getContentTxt();
+                }
+
+            } else if ( opt == '4') {
+                msg = '好友分析'
+            }
+
+            console.log(msg);
+            console.log(to_user);
+
+            $.ajax({
+                cache: false,
+                type: "POST",
+                url:"send/msg",
+                data:{'to_user': to_user, 'msg':msg, 'opt': opt},
+                dataType:"json",
+                async: true,
+                beforeSend:function(xhr, settings){
+                    xhr.setRequestHeader("X-CSRFToken", "{{ csrf_token }}");
+                },
+                success: function(data) {
+                    if(data.success == '1') {
+                        $('#share').modal('hide');
+                    } else {
+                        console.log('error--needs login');
+                        loginWechat();
+                    }
+                },
+            });
+                        
+        }
+
+        //接口测试
+        function apiTest(){
+            window.open("/api/{{product.id}}/"+menu_id,"_blank");      
+            /*
+            $.ajax({
+                cache: false,
+                type: "POST",
+                url:"api/test",
+                data:{'product_id': {{product.id}}, 'menu_id':menu_id},
+                dataType:"json",
+                async: true,
+                beforeSend:function(xhr, settings){
+                    xhr.setRequestHeader("X-CSRFToken", "{{ csrf_token }}");
+                },
+                success: function(data) {
+                    console.log(data)
+                    if (data.success) {
+                        swal(
+                            "操作成功",
+                            data.message,
+                            'success'
+                        )
+
+                    } else {
+                        swal({
+                          title: "操作失败",
+                          text: data.message,
+                          type: "error",
+                          confirmButtonText: "关闭"
+                        });
+                    }
+                },
+            });*/
+        }
+
+        //测试微信好友列表
+        function  shareWechat2(){
+             var cities = [
+                { id: 4, text: '<div style="background: url(/static/wechat/test.png) no-repeat center left;padding-left: 50px;background-size: 30px 30px;line-height: 30px;"/>Barcelona</div>'},
+                { id: 6, text: '<div style="background: url(/static/wechat/test.png) no-repeat center left;padding-left: 50px;background-size: 30px 30px;line-height: 30px;"/>Birmingham</div>' },
+                { id: 7, text: '<div style="background: url(/static/wechat/test.png) no-repeat center left;padding-left: 50px;line-height: 30px;"/>Bradford</div>' },
+                { id: 16, text: 'Dublin' },
+                { id: 21, text: 'Glasgow' },
+                { id: 26, text: 'Leeds' },
+                { id: 28, text: 'Lisbon' },
+                { id: 30, text: 'London' },
+                { id: 32, text: 'Madrid' },
+                { id: 33, text: 'Málaga' },
+                { id: 34, text: 'Manchester' },
+                { id: 46, text: 'Seville' },
+                { id: 47, text: 'Sheffield' },
+                { id: 53, text: 'Valencia' },
+                { id: 59, text: 'Zaragoza' }
+            ];
+
+            var flag = true;
+            if (flag) {
+                $('.modal-footer').hide();
+                //$('#modal-title').html('<h4>请用手机扫码登录</h4>');
+                $('#friends-list').hide();
+                //$('#pic-qr').show().attr("src", '/static/wechat/QR.png');
+                $('#modal-title').html('<h4>正在拉取好友信息...</h4>');
+                $('#pic-qr').show().attr("src", '/static/loading.gif');
+            } else {
+                $('#friends').selectivity({
+                    items: cities,
+                    multiple: true,
+                    placeholder: '  请选择用户  '
+                });
+                $('.modal-footer').show();
+                $('#modal-title').html('<h4>分享至微信好友    <span onclick="loginWechat()" class="label label-sm label-warning">切换用户</span></h4>');
+                $('#friends-list').show();
+                $('#pic-qr').hide();
+            }
+           
+
+            $('#share').modal('show');
+
+
+
+        }
+
+
 
     </script>
 {% endblock %}

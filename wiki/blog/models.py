@@ -33,15 +33,46 @@ class TagField_Mine(TagField):
 #        return self.name
 
 
+#用户基础信息
 class User(AbstractUser):
     name = models.CharField(max_length=12)
     # editor_choice = models.ForeignKey(Editor, null=True, blank=True, default="tinyMCE")
     editor_choice = models.CharField(max_length=20, default='tinyMCE')
     avatar_path = models.ImageField(upload_to="/avatar", default="/static/image/avatar_default.jpg")
+    wx_user_name = models.CharField(max_length=80, default='')
 
     def __str__(self):
         return self.name
 
+#微信好友关系
+class Wxfriends(models.Model):
+    user_id = models.IntegerField(default=1)
+    attr_id = models.CharField(max_length=100, default='')
+    user_name = models.CharField(max_length=80, default='')
+    nick_name = models.CharField(max_length=255, default='')
+    remark_name = models.CharField(max_length=80, default='')
+    province = models.CharField(max_length=20, default='')
+    city = models.CharField(max_length=20, default='')
+    sex = models.CharField(max_length=3, default='')
+    img = models.CharField(max_length=255, default='')
+    sign = models.CharField(max_length=255, default='')
+    contact_flag = models.CharField(max_length=8, default='')
+    sns_flag = models.CharField(max_length=8, default='')
+
+    def __str__(self):
+        return self.user_name
+
+#微信群组
+class Wxgroups(models.Model):
+    room_id = models.CharField(max_length=100, default='')
+    user_id = models.CharField(max_length=10, default='')
+    user_name = models.CharField(max_length=80, default='')
+    nick_name = models.CharField(max_length=255, default='')
+    remark_name = models.CharField(max_length=80, default='')
+    img = models.CharField(max_length=255, default='')
+
+    def __str__(self):
+        return self.user_name
 
 class Catalogue(models.Model):
     name = models.CharField(max_length=20, primary_key=True)
@@ -145,6 +176,7 @@ class Product(models.Model):
     description = models.CharField(max_length=255, default='') #简要描述
     docutype = models.ForeignKey(Docutype) #文档类型
     is_deleted = models.SmallIntegerField(default=0)  # 0为正常，1为已删除
+    is_public = models.SmallIntegerField(default=0)  # 0为私密，1为公开
     menu_json =  models.TextField(default='') #目录json数据
 
     def __str__(self):
@@ -167,5 +199,78 @@ class Content(models.Model):
 
     class Meta:
         ordering = ['-modify_time']
+
+#保存多媒体 图片或视频
+class Media(models.Model):
+    name = models.CharField(max_length=255, default='')  #自定义名称
+    origin_name = models.CharField(max_length=255, default='')  # 原名称
+    create_time = models.DateTimeField(auto_now_add=True)  # 上传时间
+    creator = models.ForeignKey(settings.AUTH_USER_MODEL)  # 创建人
+    album_id = models.IntegerField(default=0)  # 相册集ID
+
+    def __str__(self):
+        return str(self.name)
+
+    class Meta:
+        ordering = ['-create_time']
+
+#保存首页设置
+class Youzipic(models.Model):
+    pic_id =  models.ForeignKey('Media')   #外键：图片（多媒体）ID
+    pic_type =  models.SmallIntegerField(default=0)  # 0为轮播图，1为置顶图
+    create_time = models.DateTimeField(auto_now_add=True)  # 上传时间
+    creator = models.ForeignKey(settings.AUTH_USER_MODEL)  # 创建人
+
+    def __str__(self):
+        return str(self.pic_id)
+
+    class Meta:
+        ordering = ['-create_time']
+
+#保存成长数据
+class Growth(models.Model):
+    height = models.DecimalField(max_digits=5, decimal_places=2) #身高
+    weight = models.DecimalField(max_digits=5, decimal_places=2) #体重
+    head = models.DecimalField(max_digits=5, decimal_places=2)  # 头围
+    create_time = models.DateTimeField(auto_now_add=True)  # 上传时间
+    record_time = models.DateTimeField()  # 记录时间
+    creator = models.ForeignKey(settings.AUTH_USER_MODEL)  # 创建人
+
+    def __str__(self):
+        return str(self.record_time)
+
+    class Meta:
+        ordering = ['-record_time']
+
+
+#保存成长事件
+class Events(models.Model):
+    media_id = models.ForeignKey('Media')  # 外键：单个图片（多媒体）ID
+    album_id = models.IntegerField(default=0)  # 相册集ID
+    title = models.CharField(max_length=255, default='')  # 标题
+    content = models.TextField() #文本内容
+    create_time = models.DateTimeField(auto_now_add=True)  # 创建时间
+    record_time = models.DateTimeField()  # 记录时间
+    creator = models.ForeignKey(settings.AUTH_USER_MODEL)  # 创建人
+
+    def __str__(self):
+        return str(self.title)
+
+    class Meta:
+        ordering = ['-record_time']
+
+
+#相册集
+class Album(models.Model):
+    title = models.CharField(max_length=255, default='')  # 标题
+    cover = models.IntegerField(default=1)  # 单个图片（多媒体）ID
+    creator = models.ForeignKey(settings.AUTH_USER_MODEL)  # 创建人
+    create_time = models.DateTimeField(auto_now_add=True)  # 创建时间
+
+    def __str__(self):
+        return str(self.title)
+
+    class Meta:
+        ordering = ['-create_time']
 
 register(Product)

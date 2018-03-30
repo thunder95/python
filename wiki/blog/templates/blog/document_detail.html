@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <HTML>
 <HEAD>
-    <TITLE> 轻松老板知识平台</TITLE>
+    <TITLE> 柚子窝文档管理</TITLE>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -61,6 +61,7 @@
         //去掉第一个和最后一个
         zNodes.shift();
         zNodes.pop();
+        console.log(zNodes);
 
         //重写treenode_switch
         function addDiyDom(treeId, treeNode) {
@@ -100,7 +101,32 @@
         }
 
         $(document).ready(function(){
+            var xx = getUrlParam('subMenu');
+
+            if(xx) {
+                $('.doc-left').hide();
+                for(var i=0,len=zNodes.length; i<len; i++){
+                    if (zNodes[i].id == xx) {
+                        $('.menu-title').html(zNodes[i].name);
+                        getContent(xx);
+                        break;
+                    }
+                }
+            } else {
+                initTree();
+            }
+
+        });
+
+        function getUrlParam(name) {
+            var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)"); //构造一个含有目标参数的正则表达式对象
+            var r = window.location.search.substr(1).match(reg);  //匹配目标参数
+            if (r != null) return unescape(r[2]); return null; //返回参数值
+        }
+
+        function initTree(){
             var treeObj = $("#treeMenu");
+            console.log('nonono');
             //初始化目录结构
             var ztree = $.fn.zTree.init(treeObj, setting, zNodes);
             //根据屏幕宽度进行响应(应对移动设备的访问)
@@ -135,8 +161,7 @@
                 } 
                
             });
-
-        });
+        }
 
       
 
@@ -235,6 +260,7 @@
                 success: function(data) {
 
                     if (data.success) {
+
                         //设置作者和文档类型
                         var docu_type = data.data.content_type == 1 ? ' MarkDown' : ' Editor';
                         $('#content-author').html('作者: {{document.author}}&nbsp;&nbsp;•&nbsp&nbsp;;编辑器类型:'+ docu_type);

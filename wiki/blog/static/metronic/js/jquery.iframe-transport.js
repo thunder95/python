@@ -165,6 +165,7 @@
 
     // The iframe transport returns the iframe content document as response.
     // The following adds converters from iframe to text, json, html, and script:
+    /*django会报socket10053的错误
     $.ajaxSetup({
         converters: {
             'iframe text': function (iframe) {
@@ -180,6 +181,6 @@
                 return iframe && $.globalEval($(iframe[0].body).text());
             }
         }
-    });
+    });*/
 
 }));

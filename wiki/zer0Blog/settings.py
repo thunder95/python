@@ -42,7 +42,16 @@ INSTALLED_APPS = [
     'ueditor',
 ]
 
+CACHES = {
+	'default': {
+		'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+		'LOCATION': '/var/cache/wiki', #linux
+		#'LOCATION': 'f:/github/cache',#windows
+	}
+}
+
 MIDDLEWARE_CLASSES = [
+    'django.middleware.cache.UpdateCacheMiddleware',  # always on the top
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -52,6 +61,7 @@ MIDDLEWARE_CLASSES = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'blog.middleware.admin_middleware.AdminAuthenticationMiddleware',
+    'django.middleware.cache.FetchFromCacheMiddleware',  # always on the bottom
 ]
 
 ROOT_URLCONF = 'zer0Blog.urls'
@@ -77,10 +87,7 @@ WSGI_APPLICATION = 'zer0Blog.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'hulei_test',
-        'USER': 'root',
-        'PASSWORD': '12345abc',
-        'HOST': '120.76.113.36',
+        'OPTIONS': {'charset':'utf8mb4'},  
         # 'USER': 'root',
         # 'PASSWORD': 'root',
         # 'HOST': '10.0.3.12',
@@ -125,8 +132,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'upload')
 MEDIA_URL = '/upload/'
 
 STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 STATICFILES_DIRS = (
-    os.path.join(BASE_DIR, "static"),
+    #os.path.join(BASE_DIR, "static"),
 )
 
 # accept image type

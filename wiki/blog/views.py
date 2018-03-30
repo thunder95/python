@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
 import json
 import re
+import os
 from django.db.models import Q
 from collections import OrderedDict
 from django.http import HttpResponse,HttpResponseRedirect
@@ -12,8 +13,9 @@ from zer0Blog.settings import PERNUM
 from tagging.models import TaggedItem
 
 from blog.pagination import paginator_tool
-from .models import Post, Carousel, Comment, Repository, Catalogue, User, Product, Content
-
+from .models import Post, Carousel, Comment, Repository, Catalogue, User, Product, Content, Media, Album, Growth, Events, Youzipic
+from django.shortcuts import render
+from .rest_api import apidoc
 
 class BaseMixin(object):
 
@@ -31,18 +33,88 @@ class BaseMixin(object):
 # 前端查看的页面 登录
 class IndexView(BaseMixin, ListView):
     template_name = 'blog/index.html'
-    context_object_name = 'post_list'
-    queryset = Post.objects.filter(status=1)  # 只取出状态为“已发布”的文章
+    context_object_name = 'growth_list'
+
+    def get_queryset(self):
+        #成长数据
+        growth_list = Growth.objects.all()
+        data = {'x':[], 'y1':[],  'y2':[], 'y3':[]}
+        for i in range(len(growth_list)):
+            data['x'].append(growth_list[i].record_time.strftime("%Y-%m-%d"))
+            data['y1'].append(str(growth_list[i].height))
+            data['y2'].append(str(growth_list[i].weight))
+            data['y3'].append(str(growth_list[i].head))
+        return data
 
     def get_context_data(self, **kwargs):
-        page = self.kwargs.get('page') or self.request.GET.get('page') or 1
-        objects, page_range = paginator_tool(pages=page, queryset=self.queryset, display_amount=PERNUM)
-        context = super(IndexView, self).get_context_data(**kwargs)
-        context['carousel_page_list'] = Carousel.objects.all()
-        context['page_range'] = page_range
-        context['objects'] = objects
 
+        context = super(IndexView, self).get_context_data(**kwargs)
+
+        #成长事件
+        events = Events.objects.all()
+        events_html = ''
+        img_suffixs = '.jpg.png.gif.'
+        for i in range(len(events)):
+            #时间
+            events_html += '{time:"' + events[i].record_time.strftime("%Y-%m-%d") + '",'
+            #标题
+            if events[i].title :
+                events_html += 'header:"' + events[i].title + '",'
+
+            #body
+            events_html += 'body:['
+
+            #图片或视频
+            if events[i].media_id :
+                mid = str(events[i].media_id)
+                file_suffix = os.path.splitext(mid)[len(os.path.splitext(mid)) - 1]
+                print file_suffix
+                if file_suffix in img_suffixs:
+                    #图片
+                    events_html += '{ tag: "img", attr: {src: "/upload/youzi/'+ mid + '", width: "150px", cssclass: "img-responsive" }},'
+                else :
+                    #视频
+                    events_html += '{ tag: "video", attr: {src: "/upload/youzi/' + mid + '", width: "150px", controls:"controls", cssclass: "img-responsive" }},'
+
+            #内容
+            events_html += '{ tag: "p", content:"' + events[i].content + '"}],'
+
+            #有相册
+            if events[i].album_id :
+                events_html += 'footer:"<a href=\'/album/'+ str(events[i].album_id) +'\' target=\'_blank\'>查看相册</a>",'
+
+            events_html += '},'
+
+        context['events_html'] = '[' + events_html + ']'
+
+        #置顶图片
+        context['top_pic'] =  Youzipic.objects.select_related('pic_id').get(pic_type=1).pic_id.name
+
+        #轮播图片
+        crousel_list = Youzipic.objects.select_related('pic_id').filter(pic_type=0).all()
+        crousel_muster = '''
+[
+		{img:'upload/youzi/1.jpg', x:-1000, y:0, z:1500, nx:0, nz:1},
+		{img:'upload/youzi/2.jpg', x:0,     y:0, z:1500, nx:0, nz:1},
+		{img:'upload/youzi/3.jpg', x:1000,  y:0, z:1500, nx:0, nz:1},
+		{img:'upload/youzi/4.jpg', x:1500,  y:0, z:1000, nx:-1, nz:0},
+		{img:'upload/youzi/5.jpg', x:1500,  y:0, z:0, nx:-1, nz:0},
+		{img:'upload/youzi/6.jpg', x:1500,  y:0, z:-1000, nx:-1, nz:0},
+		{img:'upload/youzi/7.jpg', x:1000,  y:0, z:-1500, nx:0, nz:-1},
+		{img:'upload/youzi/8.jpg', x:0,     y:0, z:-1500, nx:0, nz:-1},
+		{img:'upload/youzi/9.jpg', x:-1000, y:0, z:-1500, nx:0, nz:-1},
+		{img:'upload/youzi/10.jpg', x:-1500, y:0, z:-1000, nx:1, nz:0},
+		{img:'upload/youzi/11.jpg', x:-1500, y:0, z:0, nx:1, nz:0},
+		{img:'upload/youzi/12.jpg', x:-1500, y:0, z:1000, nx:1, nz:0}
+]
+        '''
+        for i in range(len(crousel_list)):
+            crousel_muster = crousel_muster.replace('/'+str(i+1)+'.jpg', '/' + crousel_list[i].pic_id.name)
+
+        context['crousel_pics'] = crousel_muster
         return context
+
+
 
 class PostView(BaseMixin, DetailView):
     template_name = 'blog/post_detail.html'
@@ -327,11 +399,24 @@ class DocumentView(DetailView):
     # 用于记录文章的阅读量，每次请求添加一次阅读量
     def get(self, request, *args, **kwargs):
         pkey = self.kwargs.get("pk")
-        try: 
-            document = self.queryset.get(pk=pkey)
+
+        # 判断当前用户是否是活动的用户
+        user = self.request.user
+
+        try:
+            if not user.is_authenticated():
+                #未登录只能查看公开文档
+                document = self.queryset.get(pk=pkey, is_public=1)
+            elif user.is_superuser:
+                #超管看所有文档权限
+                document = self.queryset.get(pk=pkey)
+            else:
+                # 普通登录用户只能查看自己的文档
+                document = self.queryset.get(pk=pkey,author_id=user.id)
+
             return super(DocumentView, self).get(request, *args, **kwargs)
         except Product.DoesNotExist: 
-            return HttpResponseRedirect('/')      
+            return HttpResponseRedirect('/admin/login')
 
     def get_context_data(self, **kwargs):
         context = super(DocumentView, self).get_context_data(**kwargs)
@@ -364,3 +449,82 @@ class DocumentView(DetailView):
             result['data']['modify_time'] = ''
             
         return HttpResponse(json.dumps(result))
+
+#将测试结果显示在页面上
+def ApiTest(request, pid, mid):
+
+    """A view of all bands."""
+
+    api = apidoc()
+    rs_list = []
+    try :
+        content = Content.objects.get(product_id=pid, menu_id=1)
+        item = api.api(content.content)
+        item['doc_url'] = '/document/' + str(pid)
+        rs_list.append(item)
+
+        if str(mid) == '1':
+            #循环其他所有的接口
+            content = Content.objects.filter(product_id=pid).exclude(menu_id=1)
+            for ci in content:
+                item = api.api(ci.content)
+                item['doc_url'] = '/document/' + str(pid) + '?subMenu=' + str(ci.menu_id)
+                rs_list.append(item)
+
+        else:
+            #只测试当前接口
+            content = Content.objects.get(product_id=pid, menu_id=mid)
+            item = api.api(content.content)
+            item['doc_url'] = '/document/' + str(pid) + '?subMenu=' + str(mid)
+            rs_list.append(item)
+
+    except Exception,e:
+        print(e)
+    
+    return render(request, 'blog/api_test.html', {'rs':rs_list})
+
+class DocumentListView(BaseMixin, ListView):
+
+    template_name = 'blog/document_list.html'
+    context_object_name = 'docu_list'
+
+    def get_queryset(self):
+
+        # 判断当前用户是否是活动的用户
+        user = self.request.user
+        print(user)
+        if not user.is_authenticated():
+            return HttpResponseRedirect('/admin/login')
+
+        if user.is_superuser:
+            product_list = Product.objects.all()
+        else:
+            product_list = Product.objects.filter(author_id=user.id).exclude(is_deleted=1)
+
+        return product_list
+
+#前台查看相册
+class AlbumListView(BaseMixin, ListView):
+
+    template_name = 'blog/album.html'
+    context_object_name = 'album_list'
+    album_id = 0
+
+    def get_queryset(self):
+
+        # 判断当前用户是否是活动的用户
+        user = self.request.user
+        self.album_id = self.kwargs.get("pk")
+        print self.album_id
+
+        if not user.is_authenticated():
+            return HttpResponseRedirect('/admin/login')
+
+        album_list = Media.objects.filter(album_id = self.album_id).all()
+        return album_list
+
+    def get_context_data(self, **kwargs):
+        context = super(AlbumListView, self).get_context_data(**kwargs)
+        context['ablum_detail'] =Album.objects.select_related('creator').get(id=self.album_id)
+        return context
+
